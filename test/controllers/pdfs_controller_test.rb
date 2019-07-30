@@ -1,42 +1,26 @@
 require 'test_helper'
 
 class PdfsControllerTest < ActionDispatch::IntegrationTest
-  test '#metadata returns an empty array if urls are not specified' do
-    test_pdf = File.read('test/data/invoice.pdf')
 
-    $docraptor.stub(:create_doc, test_pdf) do
-      get "/pdf_metadata"
+  test '#metadata returns an object grouped by page_count and sorted by url' do
+    return_values = [
+      { url: 'a', page_count: 3 },
+      { url: 'z', page_count: 3 },
+      { url: 'b', page_count: 3 },
+      { url: 'c', page_count: 2 }
+    ]
+
+    WebsiteToPdfMetadata.stub(:call, proc { return_values.shift }) do
+      get '/pdf_metadata?urls[]=a&urls[]=z&urls[]=b&urls[]=c'
       data = JSON.parse(@response.body)
-
+      
       assert_response :success
-      assert data.is_a?(Array)
-      assert data.length == 0
-    end
-  end
 
-  test '#metadata returns an array of pdf data objects' do
-    test_pdf = File.read('test/data/invoice.pdf')
-
-    $docraptor.stub(:create_doc, test_pdf) do
-      get "/pdf_metadata?urls[]=http://some.test.com"
-      data = JSON.parse(@response.body)
-
-      assert_response :success
-      assert data.is_a?(Array)
-      assert data.length == 1
-    end
-  end
-
-  test '#metadata accepts mutiple urls via the urls param' do
-    test_pdf = File.read('test/data/invoice.pdf')
-
-    $docraptor.stub(:create_doc, test_pdf) do
-      get "/pdf_metadata?urls[]=http://some.test.com&urls[]=http://some.other.com"
-      data = JSON.parse(@response.body)
-
-      assert_response :success
-      assert data.is_a?(Array)
-      assert data.length == 2
+      assert_equal(data['2'].length, 1)
+      assert_equal(data['3'].length, 3)
+      assert_equal(data['3'].first['url'], 'a')
+      assert_equal(data['3'].second['url'], 'b')
+      assert_equal(data['3'].third['url'], 'z')
     end
   end
 end

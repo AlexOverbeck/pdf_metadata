@@ -1,6 +1,9 @@
 class PdfsController < ApplicationController
   def metadata
-    render json: generate_pdf_metadata(params[:urls])
+    pdf_metadata = generate_pdf_metadata(params[:urls])
+    sorted_metadata = group_and_sort_data(pdf_metadata)
+
+    render json: sorted_metadata.to_h
   end
 
   private
@@ -10,6 +13,16 @@ class PdfsController < ApplicationController
 
     urls.map do |url|
       WebsiteToPdfMetadata.call(url)
+    end
+  end
+
+  def group_and_sort_data(data) 
+    grouped = data.group_by { |item| item[:page_count] }.sort
+    grouped.map do |page_count, data|
+      [
+        page_count,
+        data.sort_by { |item| item[:url] }
+      ]
     end
   end
 end
